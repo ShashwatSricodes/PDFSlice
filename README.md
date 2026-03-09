@@ -40,7 +40,8 @@ npm run dev
 ```
 
 ## Star History
-[![Star History Chart](https://api.star-history.com/svg?repos=ShashwatSricodes/PDFSlice&type=Date)](https://star-history.com/#ShashwatSricodes/PDFSlice&Date)
+
+[![Star History Chart](https://api.star-history.com/image?repos=ShashwatSricodes/PDFSlice&type=date&legend=top-left)](https://www.star-history.com/?repos=ShashwatSricodes%2FPDFSlice&type=date&legend=top-left)
 
 ---
 ## License
