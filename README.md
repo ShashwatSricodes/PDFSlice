@@ -1,10 +1,7 @@
 # PDFSlice
-
 A fast, private PDF toolkit right in your browser. No uploads. No servers. Your files never leave your device.
 
-
 ## Features
-
 - Merge multiple PDFs into one
 - Split and extract specific pages or ranges
 - Compress PDFs to reduce file size
@@ -17,14 +14,10 @@ A fast, private PDF toolkit right in your browser. No uploads. No servers. Your 
 - Edit metadata like title and author
 - Chain multiple tools together with Pipeline
 
-
 ## Privacy First
-
 100% client side processing using JavaScript. Your PDFs are never uploaded to any server. All operations happen locally and your data stays yours.
 
-
 ## Tech Stack
-
 **Frontend**
 - React
 - TypeScript
@@ -36,23 +29,19 @@ A fast, private PDF toolkit right in your browser. No uploads. No servers. Your 
 **PDF Processing**
 - pdf-lib
 - PDF.js
-
+- @hyzyla/pdfcpu
 
 ## Getting Started
 ```bash
-git clone https://github.com/ShashwatSricodes/pdf-artisan.git
-cd pdf-artisan
+git clone https://github.com/ShashwatSricodes/PDFSlice.git
+cd PDFSlice
 npm install
 npm run dev
 ```
 
-
 ## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=ShashwatSricodes/pdf-artisan&type=Date)](https://star-history.com/#ShashwatSricodes/pdf-artisan&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=ShashwatSricodes/PDFSlice&type=Date)](https://star-history.com/#ShashwatSricodes/PDFSlice&Date)
 
 ---
-
 ## License
-
-MIT. Built with love for people who value privacy.
+MIT. Built with ❤️ for people who value privacy.
