@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 60 4% 95%;
+    --foreground: 0 0% 7%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 7%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 7%;
+    --primary: 0 0% 7%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 60 4% 95%;
+    --secondary-foreground: 0 0% 7%;
+    --muted: 60 4% 92%;
+    --muted-foreground: 60 5% 52%;
+    --accent: 60 4% 90%;
+    --accent-foreground: 0 0% 7%;
+    --destructive: 1 77% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 60 8% 89%;
+    --input: 60 8% 89%;
+    --ring: 0 0% 7%;
+    --radius: 0.75rem;
+
+    --badge-organize: 125 39% 94%;
+    --badge-organize-text: 122 39% 25%;
+    --badge-convert: 207 89% 94%;
+    --badge-convert-text: 207 50% 30%;
+    --badge-optimize: 46 100% 94%;
+    --badge-optimize-text: 46 70% 30%;
+    --badge-security: 30 100% 94%;
+    --badge-security-text: 30 60% 30%;
+    --badge-edit: 280 60% 94%;
+    --badge-edit-text: 280 40% 30%;
+    --success: 122 39% 25%;
+    --offline-badge: 122 39% 94%;
+    --offline-badge-text: 122 39% 25%;
+
+    --sidebar-background: 60 4% 97%;
+    --sidebar-foreground: 0 0% 7%;
+    --sidebar-primary: 0 0% 7%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 60 4% 92%;
+    --sidebar-accent-foreground: 0 0% 7%;
+    --sidebar-border: 60 8% 89%;
+    --sidebar-ring: 0 0% 7%;
+
+    --font-heading: 'Instrument Serif', serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-mono);
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+}
+
+@layer utilities {
+  .card-shadow {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  }
+  .card-shadow-hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+}
+
+@keyframes progress-fill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.3s ease-out forwards;
+}
+
+@keyframes progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+.animate-progress {
+  width: 33%;
+  animation: progress-indeterminate 1.5s ease-in-out infinite;
+}
