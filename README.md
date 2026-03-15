@@ -1,5 +1,6 @@
 # PDFSlice
 A fast, private PDF toolkit right in your browser. No uploads. No servers. Your files never leave your device.
+
 ![PDFSlice Screenshot](Demo.png)
 
 ## Features
