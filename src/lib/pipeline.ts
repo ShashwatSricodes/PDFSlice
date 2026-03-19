@@ -39,7 +39,7 @@ export async function runPipeline(
 
       switch (step.toolId) {
         case 'compress':
-          output = await pdfTools.compressPdf(currentFile);
+          output = (await pdfTools.compressPdf(currentFile)).blob;
           break;
         case 'repair':
           output = await pdfTools.repairPdf(currentFile);

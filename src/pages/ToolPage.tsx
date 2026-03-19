@@ -173,6 +173,12 @@ export default function ToolPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [pdfDoc, setPdfDoc] = useState<PDFDoc | null>(null);
   const [pageCount, setPageCount] = useState(0);
+  const [processingError, setProcessingError] = useState("");
+
+  // Compress tool state
+  const [compressionLevel, setCompressionLevel] = useState<pdfTools.CompressionLevel>('max');
+  const [compressProgressMsg, setCompressProgressMsg] = useState('');
+  const [compressStats, setCompressStats] = useState<{ originalSize: number; compressedSize: number; savedPercent: number } | null>(null);
   const [result, setResult] = useState<Blob | Blob[] | string | null>(null);
   const [resultFilename, setResultFilename] = useState("");
 
@@ -199,13 +205,43 @@ export default function ToolPage() {
   const [formValues, setFormValues] = useState<Record<string, string>>({});
 
   // Redact state
-  const [redactions, setRedactions] = useState<Array<{
-    pageIndex: number; x: number; y: number; width: number; height: number;
-  }>>([]);
+  const [redactions, setRedactions] = useState<pdfTools.RedactionArea[]>([]);
+  const [pageImages, setPageImages] = useState<string[]>([]);
+  const [redactActivePage, setRedactActivePage] = useState(0);
+  const [redactProgressMsg, setRedactProgressMsg] = useState('');
 
   // Merge preview docs
   const [mergeDocs, setMergeDocs] = useState<{ doc: PDFDoc; pages: number; fileName: string }[]>([]);
 
+  // Render page images for redact tool
+  useEffect(() => {
+    if (toolId !== "redact" || !pdfDoc) {
+      setPageImages([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const images: string[] = [];
+      for (let i = 1; i <= pdfDoc.numPages; i++) {
+        if (cancelled) return;
+        const page = await pdfDoc.getPage(i);
+        const baseVp = page.getViewport({ scale: 1 });
+        const scale = Math.min(1.5, 700 / baseVp.width);
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d')!;
+        await page.render({ canvasContext: ctx, viewport } as any).promise;
+        images.push(canvas.toDataURL('image/png'));
+      }
+      if (!cancelled) {
+        setPageImages(images);
+        setRedactActivePage(0);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [toolId, pdfDoc]);
 
   // Page title
   useEffect(() => {
@@ -238,6 +274,10 @@ export default function ToolPage() {
     setFormValues({});
     setRedactions([]);
     setMergeDocs([]);
+    setCompressionLevel('balanced');
+    setCompressProgressMsg('');
+    setCompressStats(null);
+    setProcessingError('');
   }, [toolId]);
 
   // Load merge docs when files change for merge tool
@@ -322,9 +362,24 @@ export default function ToolPage() {
           output = await pdfTools.rotatePdf(file, pageRotations);
           setResultFilename("rotated.pdf");
           break;
-        case "compress":
-          output = await pdfTools.compressPdf(file);
+        case "compress": {
+          setCompressProgressMsg('');
+          setProcessingError('');
+          const compResult = await pdfTools.compressPdf(file, compressionLevel, (msg) => {
+            setCompressProgressMsg(msg);
+          });
+          if (compResult.compressedSize >= compResult.originalSize) {
+            setProcessingError('This PDF is already well optimized — compression did not reduce its size further. Try Maximum level for more aggressive compression.');
+          }
+          setCompressStats({
+            originalSize: compResult.originalSize,
+            compressedSize: compResult.compressedSize,
+            savedPercent: compResult.savedPercent,
+          });
+          output = compResult.blob;
           setResultFilename("compressed.pdf");
+          break;
+        }
           break;
         case "repair":
           output = await pdfTools.repairPdf(file);
@@ -397,7 +452,9 @@ export default function ToolPage() {
           setResultFilename("filled.pdf");
           break;
         case "redact":
-          output = await pdfTools.redactPdf(file, redactions);
+          setState('processing');
+          setRedactProgressMsg('');
+          output = await pdfTools.redactPdf(file, redactions, (msg) => setRedactProgressMsg(msg));
           setResultFilename("redacted.pdf");
           break;
         default:
@@ -813,9 +870,33 @@ export default function ToolPage() {
 
               {/* Compress info */}
               {toolId === "compress" && (
-                <p className="text-sm font-mono text-muted-foreground">
-                  Re-saves the PDF with object streams enabled. For deeper compression of embedded images, a native tool is recommended.
-                </p>
+                <div className="space-y-4">
+                  <label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground block">
+                    Compression Level
+                  </label>
+                  <div className="flex gap-2">
+                    {(['lossless', 'balanced', 'max'] as pdfTools.CompressionLevel[]).map(l => (
+                      <button
+                        key={l}
+                        onClick={() => setCompressionLevel(l)}
+                        className={`flex-1 py-2.5 px-3 rounded-xl border text-xs font-mono capitalize transition-all ${
+                          compressionLevel === l
+                            ? 'border-foreground bg-foreground text-background'
+                            : 'border-border bg-card text-muted-foreground hover:border-foreground'
+                        }`}
+                      >
+                        {l === 'lossless' && '🔒 Lossless'}
+                        {l === 'balanced' && '⚖️ Balanced'}
+                        {l === 'max' && '🗜️ Maximum'}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs font-mono text-muted-foreground">
+                    {compressionLevel === 'lossless' && 'High quality — printer-optimized, mild compression'}
+                    {compressionLevel === 'balanced' && 'Recommended — eBook quality, great compression'}
+                    {compressionLevel === 'max' && 'Smallest file — screen quality, aggressive compression'}
+                  </p>
+                </div>
               )}
 
               {/* Blank pages */}
@@ -836,8 +917,50 @@ export default function ToolPage() {
               )}
 
               {/* Redact */}
-              {toolId === "redact" && pdfDoc && (
-                <RedactionCanvas pdfDoc={pdfDoc} pageCount={pageCount} onRedactionsChange={setRedactions} />
+              {toolId === "redact" && pageImages.length > 0 && (
+                <div>
+                  <div className="rounded-xl border border-border bg-card p-4 mb-4 flex gap-3 items-start">
+                    <span className="text-lg">🔒</span>
+                    <div>
+                      <p className="text-sm font-mono font-medium text-foreground">True content redaction — powered by MuPDF</p>
+                      <p className="text-xs font-mono text-muted-foreground mt-1">
+                        Marked content is permanently removed from the PDF. Text outside redacted areas remains fully selectable and searchable.
+                      </p>
+                    </div>
+                  </div>
+                  {/* Page selector */}
+                  <div className="flex flex-wrap gap-1 mb-4">
+                    {pageImages.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setRedactActivePage(i)}
+                        className={`w-8 h-8 rounded-lg text-xs font-mono border transition-colors ${
+                          redactActivePage === i ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border hover:border-foreground"
+                        }`}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                  </div>
+                  <RedactionCanvas
+                    pageImageUrl={pageImages[redactActivePage]}
+                    pageIndex={redactActivePage}
+                    redactions={redactions}
+                    onAdd={(area) => setRedactions(prev => [...prev, area])}
+                    onClear={(pi) => setRedactions(prev => prev.filter(r => r.page !== pi))}
+                  />
+                  {/* Summary */}
+                  {redactions.length > 0 && (
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className="text-xs font-mono text-muted-foreground">
+                        {redactions.length} redaction{redactions.length > 1 ? 's' : ''} across {new Set(redactions.map(r => r.page)).size} page{new Set(redactions.map(r => r.page)).size > 1 ? 's' : ''}
+                      </span>
+                      <button onClick={() => setRedactions([])} className="text-xs font-mono text-destructive hover:text-destructive/80 transition-colors">
+                        Clear all
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Process button */}
@@ -857,10 +980,38 @@ export default function ToolPage() {
           {/* Processing */}
           {state === "processing" && (
             <div className="bg-card border border-border rounded-xl p-8 card-shadow">
-              <p className="text-sm font-mono text-muted-foreground mb-4 text-center">
-                {processingMessage}
-              </p>
-              <ProgressBar active />
+              {toolId === "compress" ? (
+                <>
+                  <p className="text-sm font-mono text-muted-foreground mb-4 text-center">
+                    {compressProgressMsg || 'Starting...'}
+                  </p>
+                  <ProgressBar active />
+                  {compressProgressMsg === 'Loading Ghostscript engine...' && (
+                    <p className="text-[10px] font-mono text-muted-foreground text-center mt-3">
+                      First run downloads ~18MB engine. Subsequent runs are instant.
+                    </p>
+                  )}
+                </>
+              ) : toolId === "redact" ? (
+                <>
+                  <p className="text-sm font-mono text-muted-foreground mb-4 text-center">
+                    {redactProgressMsg || 'Starting...'}
+                  </p>
+                  <ProgressBar active />
+                  {redactProgressMsg === 'Loading MuPDF engine...' && (
+                    <p className="text-[10px] font-mono text-muted-foreground text-center mt-3">
+                      First run downloads ~25MB engine. Subsequent runs are instant.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-mono text-muted-foreground mb-4 text-center">
+                    {processingMessage}
+                  </p>
+                  <ProgressBar active />
+                </>
+              )}
             </div>
           )}
 
@@ -885,6 +1036,29 @@ export default function ToolPage() {
                   filename={resultFilename}
                   onDownload={handleDownload}
               />
+              )}
+
+              {/* Compress stats */}
+              {toolId === 'compress' && compressStats && (
+                <div className="bg-card border border-border rounded-xl p-6 mt-4 card-shadow animate-fade-in-up">
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Original</p>
+                      <p className="text-lg font-mono font-semibold text-foreground">{(compressStats.originalSize / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Compressed</p>
+                      <p className="text-lg font-mono font-semibold text-foreground">{(compressStats.compressedSize / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Saved</p>
+                      <p className="text-lg font-mono font-semibold text-primary">{compressStats.savedPercent.toFixed(1)}%</p>
+                    </div>
+                  </div>
+                  {processingError && (
+                    <p className="text-xs font-mono text-yellow-600 dark:text-yellow-400 mt-3 text-center">{processingError}</p>
+                  )}
+                </div>
               )}
 
               {toolId === 'pdf-to-images' && Array.isArray(result) && result.length > 1 && (

@@ -63,9 +63,55 @@ export async function reorderPages(file: File, newOrder: number[]): Promise<Blob
   return toBlob(await doc.save());
 }
 
-export async function compressPdf(file: File): Promise<Blob> {
-  const doc = await loadPdf(file);
-  return toBlob(await doc.save({ useObjectStreams: true }));
+export type CompressionLevel = 'lossless' | 'balanced' | 'max';
+
+export async function compressPdf(
+  file: File,
+  level: CompressionLevel = 'balanced',
+  onProgress?: (message: string) => void
+): Promise<{
+  blob: Blob;
+  originalSize: number;
+  compressedSize: number;
+  savedPercent: number;
+}> {
+  const originalSize = file.size;
+  const fileBuffer = await file.arrayBuffer();
+
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(
+      new URL('../workers/ghostscript.worker.ts', import.meta.url),
+      { type: 'module' }
+    );
+
+    worker.onmessage = (e: MessageEvent) => {
+      const { type, message, output } = e.data;
+
+      if (type === 'progress') {
+        onProgress?.(message);
+      } else if (type === 'done') {
+        worker.terminate();
+        const blob = new Blob([output], { type: 'application/pdf' });
+        const compressedSize = blob.size;
+        resolve({
+          blob,
+          originalSize,
+          compressedSize,
+          savedPercent: Math.max(0, ((originalSize - compressedSize) / originalSize) * 100),
+        });
+      } else if (type === 'error') {
+        worker.terminate();
+        reject(new Error(message));
+      }
+    };
+
+    worker.onerror = (err) => {
+      worker.terminate();
+      reject(new Error(err.message));
+    };
+
+    worker.postMessage({ fileBuffer, level }, [fileBuffer]);
+  });
 }
 
 export async function repairPdf(file: File): Promise<Blob> {
@@ -96,10 +142,11 @@ export async function unlockPdf(
   const data = await file.arrayBuffer();
   try {
     const pdf = await PDF.load(new Uint8Array(data), { credentials: password } as any);
+    (pdf as any).removeProtection();
     const unlocked = await pdf.save();
     return new Blob([unlocked as any], { type: 'application/pdf' });
   } catch {
-    throw new Error('Incorrect password. Please check and try again.');
+    throw new Error('Incorrect password or unsupported encryption.');
   }
 }
 
@@ -351,29 +398,48 @@ export async function detectFormFields(
   });
 }
 
+export type RedactionArea = {
+  page: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export async function redactPdf(
   file: File,
-  redactions: Array<{
-    pageIndex: number; x: number; y: number; width: number; height: number;
-  }>
+  redactions: RedactionArea[],
+  onProgress?: (message: string) => void
 ): Promise<Blob> {
-  const doc = await loadPdf(file);
-  const pages = doc.getPages();
+  const fileBuffer = await file.arrayBuffer();
 
-  for (const r of redactions) {
-    const page = pages[r.pageIndex];
-    if (!page) continue;
-    page.drawRectangle({
-      x: r.x,
-      y: r.y,
-      width: r.width,
-      height: r.height,
-      color: rgb(0, 0, 0),
-      opacity: 1,
-    });
-  }
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(
+      new URL('../workers/mupdf.worker.ts', import.meta.url),
+      { type: 'module' }
+    );
 
-  return toBlob(await doc.save());
+    worker.onmessage = (e: MessageEvent) => {
+      const { type, message, output } = e.data;
+
+      if (type === 'progress') {
+        onProgress?.(message);
+      } else if (type === 'done') {
+        worker.terminate();
+        resolve(new Blob([output], { type: 'application/pdf' }));
+      } else if (type === 'error') {
+        worker.terminate();
+        reject(new Error(message));
+      }
+    };
+
+    worker.onerror = (err) => {
+      worker.terminate();
+      reject(new Error(err.message));
+    };
+
+    worker.postMessage({ fileBuffer, redactions }, [fileBuffer]);
+  });
 }
 
 export async function getPageCount(file: File): Promise<number> {

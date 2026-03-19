@@ -27,7 +27,7 @@ export default function Home() {
           </p>
         </div>
         <a
-          href="https://github.com/pdfslice/pdfslice"
+          href="https://github.com/ShashwatSricodes/PDFSlice"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card text-sm font-mono text-foreground hover:border-foreground hover:shadow-sm transition-all self-start"

@@ -7,6 +7,7 @@ import ToolPage from "./pages/ToolPage";
 import { useIsMobile } from "./hooks/use-mobile";
 import { useState, useEffect } from "react";
 import { Sheet, SheetContent } from "./components/ui/sheet";
+import { Analytics } from "@vercel/analytics/react";
 
 const App = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -57,6 +58,7 @@ const App = () => {
               </div>
             </main>
           </div>
+          <Analytics />
         </div>
       </HashRouter>
     </ErrorBoundary>
