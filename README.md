@@ -4,17 +4,30 @@ A fast, private PDF toolkit right in your browser. No uploads. No servers. Your 
 ![PDFSlice Screenshot](Demo.png)
 
 ## Features
-- Merge multiple PDFs into one
-- Split and extract specific pages or ranges
-- Compress PDFs to reduce file size
-- Protect PDFs with password encryption
-- Unlock password protected PDFs
-- Convert images to a single PDF
-- Export PDF pages as high quality images
-- Add text watermarks to every page
-- Rotate pages by 90, 180, or 270 degrees
-- Edit metadata like title and author
-- Chain multiple tools together with Pipeline
+- Merge multiple PDFs into one  
+- Split PDF into specific pages or ranges  
+- Remove selected pages from a PDF  
+- Reorder pages within a PDF  
+- Rotate PDF pages to desired orientation  
+
+- Convert PDF to images  
+- Convert images into a single PDF  
+- Extract text from PDF  
+- Convert PDF into a ZIP archive  
+
+- Compress PDF to reduce file size  
+- Repair corrupted or damaged PDFs  
+
+- Protect PDF with password encryption  
+- Unlock password-protected PDFs  
+- Add watermark to PDF  
+- Remove PDF metadata  
+
+- Add page numbers to PDF  
+- Crop PDF pages  
+- Sign PDF digitally  
+- Fill and flatten PDF forms  
+- Redact sensitive content from PDF
 
 ## Privacy First
 100% client side processing using JavaScript. Your PDFs are never uploaded to any server. All operations happen locally and your data stays yours.
